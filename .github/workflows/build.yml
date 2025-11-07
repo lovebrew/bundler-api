@@ -1,0 +1,40 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  Linux-arm64:
+    name: Linux (ARM64)
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build
+        run: cargo build --verbose
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundler.arm64
+          path: target/release/bundler
+
+  Linux-amd64:
+    name: "Linux (AMD64)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build
+        run: cargo build --verbose
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundler.amd64
+          path: target/release/bundler

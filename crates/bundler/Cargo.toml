@@ -1,0 +1,20 @@
+[package]
+name = "bundler"
+version = "0.1.0"
+edition = "2024"
+description = "Rocket.rs server for bundling games, handling asset conversion and binary compilation."
+
+[dependencies]
+anyhow.workspace = true
+log4rs.workspace = true
+log.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+serde_yaml = "0.9.34"
+rocket = "0.5.1"
+zip = "6.0.0"
+tempfile = "3.23.0"
+
+system = { path = "../system" }
+asset = { path = "../asset" }
+binary = { path = "../binary" }

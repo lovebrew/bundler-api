@@ -1,0 +1,14 @@
+[default]
+address = "127.0.0.1"
+port = 5000
+ident = "bundler"
+cli_colors = false
+
+[default.limits]
+form-data = "32MiB"
+data-form = "32MiB"
+form = "32MiB"
+file = "32MiB"
+
+[production]
+address = "0.0.0.0"

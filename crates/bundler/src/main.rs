@@ -2,6 +2,7 @@
 extern crate rocket;
 
 mod cors;
+mod logger;
 mod routes;
 mod temp_file_ext;
 mod zipfile;

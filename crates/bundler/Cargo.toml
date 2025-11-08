@@ -14,6 +14,7 @@ serde_yaml = "0.9.34"
 rocket = "0.5.1"
 zip = "6.0.0"
 tempfile = "3.23.0"
+chrono = "0.4.42"
 
 system = { path = "../system" }
 asset = { path = "../asset" }

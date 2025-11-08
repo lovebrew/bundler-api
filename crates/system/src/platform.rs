@@ -33,9 +33,9 @@ impl FromStr for Platform {
 impl Display for Platform {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let name = match self {
-            Platform::Ctr => "3DS",
-            Platform::Hac => "Switch",
-            Platform::Cafe => "Wii U",
+            Platform::Ctr => "ctr",
+            Platform::Hac => "hac",
+            Platform::Cafe => "cafe",
         };
         write!(f, "{name}")
     }

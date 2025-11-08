@@ -1,8 +1,8 @@
-use std::{path::PathBuf, str::FromStr};
+use std::str::FromStr;
 
 use anyhow::Result;
 use asset::icon::Icon;
-use binary::{compile::Compile, ctr::Ctr, metadata::Metadata};
+use binary::{cafe::Cafe, compile::Compile, ctr::Ctr, hac::Hac, metadata::Metadata};
 use rocket::{
     form::{Form, FromForm},
     fs::{NamedFile, TempFile},
@@ -10,7 +10,7 @@ use rocket::{
     http::Status,
     tokio,
 };
-use system::{platform::Platform, resources, resources::Resource};
+use system::{platform::Platform, resources::Resource};
 use tempfile::tempdir;
 
 use crate::{
@@ -45,29 +45,35 @@ pub async fn compile(form: Form<CompileRequest<'_>>) -> Result<(Status, NamedFil
         description: form.description,
     };
 
-    let icon_data = &form.icon.take();
+    let icon_bytes = match form.icon {
+        Some(icon) if icon.len() > 0 => icon.read_bytes().await.ok(),
+        _ => None,
+    };
+
     let tasks = form.target.clone().into_iter().map(|target| {
         let temp_path = temp_dir.path().to_owned();
         let metadata = metadata.clone();
+        let icon_bytes = icon_bytes.clone();
         async move {
             let platform = Platform::from_str(&target).ok()?;
             let target_path = temp_path.join(target);
+            if !target_path.exists() {
+                tokio::fs::create_dir_all(&target_path).await.ok()?;
+            }
             let icon_path = target_path.join("icon.bin");
-
-            let icon_bytes = if icon_data.is_none() {
-                let path = resources::fetch(&platform, Resource::DefaultIcon);
-                tokio::fs::read(path).await.ok()?
-            } else {
-                let file = icon_data.as_ref()?;
-                file.read_bytes().await.ok()?
+            let icon_data = match icon_bytes {
+                Some(bytes) => bytes,
+                None => {
+                    let path = system::resources::fetch(&platform, Resource::DefaultIcon);
+                    let bytes = tokio::fs::read(path).await.ok()?;
+                    bytes
+                }
             };
-            Icon::from_bytes(&platform, &icon_bytes)?
-                .create(&icon_path)
-                .ok()?;
-
-            let binary = match platform {
+            let _ = Icon::from_bytes(&platform, &icon_data)?.create(&icon_path);
+            let binary: Box<dyn Compile + Send> = match platform {
                 Platform::Ctr => Box::new(Ctr {}),
-                _ => return None,
+                Platform::Hac => Box::new(Hac {}),
+                Platform::Cafe => Box::new(Cafe {}),
             };
             binary.compile(&target_path, &metadata, &icon_path).ok()
         }

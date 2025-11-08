@@ -17,19 +17,12 @@ impl Icon {
             Platform::Ctr => ((48, 48), ImageFormat::Png),
             Platform::Hac => ((256, 256), ImageFormat::Jpeg),
             Platform::Cafe => ((128, 128), ImageFormat::Png),
-            _ => return None,
         };
         image = image.thumbnail(width, height);
         Some(Self { image, format })
     }
 
     pub fn create(&self, path: &Path) -> Result<()> {
-        let extension = if self.format == ImageFormat::Png {
-            "png"
-        } else {
-            "jpeg"
-        };
-        let path = path.with_extension(extension);
         self.image.save_with_format(path, self.format)?;
         Ok(())
     }

@@ -1,5 +1,5 @@
 use rocket::tokio::{self, sync::OnceCell};
-use system::downloads::CACHE_FILENAME;
+use system::cache::CACHE_FILENAME;
 
 static DATA: OnceCell<String> = OnceCell::const_new();
 

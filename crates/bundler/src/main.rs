@@ -9,7 +9,7 @@ mod zipfile;
 
 use routes::{compile::compile, convert::convert, health::health};
 
-use system::{downloads::GitHubService, programs};
+use system::programs;
 
 use anyhow::Result;
 use log::error;
@@ -28,7 +28,7 @@ async fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    GitHubService::sync().await?;
+    system::downloads::sync().await?;
 
     let rocket = rocket::build();
     info!("Running with profile: {}", rocket.figment().profile());

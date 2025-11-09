@@ -10,13 +10,16 @@ use log::error;
 pub struct Cors;
 
 static ALLOWED_ORIGINS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
-    [
-        "http://localhost:5000",
-        "https://lovebrew.github.io",
-        "https://bundle.lovebrew.org",
-    ]
-    .into_iter()
-    .collect()
+    let mut set: HashSet<&'static str> =
+        ["https://lovebrew.github.io", "https://bundle.lovebrew.org"]
+            .into_iter()
+            .collect();
+
+    #[cfg(debug_assertions)]
+    {
+        set.insert("http://localhost:5000");
+    }
+    set
 });
 
 fn set_cors_headers(

@@ -1,7 +1,8 @@
 use std::fmt::Display;
-use std::io::{Error, Write};
+use std::io::Write;
 use std::sync::Arc;
 
+use anyhow::{Result, bail};
 use chrono::Local;
 use rocket::tokio::sync::RwLock;
 
@@ -25,7 +26,7 @@ impl Display for Level {
 }
 
 impl Tracefile {
-    async fn log(&self, level: Level, message: &str) -> Result<(), Error> {
+    async fn log(&self, level: Level, message: &str) -> Result<()> {
         let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
         let mut data = self.inner.write().await;
         writeln!(data, "[{timestamp} {level: >}] {message}")?;
@@ -40,10 +41,10 @@ impl Tracefile {
         let _ = self.log(Level::Error, message).await;
     }
 
-    pub async fn bytes(&self) -> Result<Vec<u8>, Error> {
+    pub async fn bytes(&self) -> Result<Vec<u8>> {
         let data = self.inner.read().await;
         if data.is_empty() {
-            return Err(Error::new(std::io::ErrorKind::UnexpectedEof, "No log data"));
+            bail!("No log data");
         }
         Ok(data.clone())
     }

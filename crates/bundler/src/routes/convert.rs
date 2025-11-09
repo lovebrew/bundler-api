@@ -61,7 +61,8 @@ pub async fn convert(form: Form<AssetUpload<'_>>) -> Result<(Status, NamedFile),
 
             let bytes = asset.process(&output_path).ok()?;
             let filepath = output_path.strip_prefix(temp_path).ok()?;
-            Some((filepath.to_owned(), bytes))
+            let extension = asset.extension();
+            Some((filepath.with_extension(extension), bytes))
         }
     });
 

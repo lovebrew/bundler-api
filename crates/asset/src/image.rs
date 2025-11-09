@@ -48,4 +48,8 @@ impl Process for Image {
         };
         Ok(bytes)
     }
+
+    fn extension(&self) -> &str {
+        "t3x"
+    }
 }

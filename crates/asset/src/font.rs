@@ -33,4 +33,8 @@ impl Process for Font {
         };
         Ok(bytes)
     }
+
+    fn extension(&self) -> &str {
+        "bcfnt"
+    }
 }

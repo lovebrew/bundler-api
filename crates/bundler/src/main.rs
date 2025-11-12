@@ -7,7 +7,7 @@ mod routes;
 mod temp_file_ext;
 mod zipfile;
 
-use routes::{compile::compile, convert::convert, health::health};
+use routes::{artifact::artifact, compile::compile, convert::convert, health::health};
 
 use system::programs;
 
@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
     info!("Running with profile: {}", rocket.figment().profile());
 
     rocket
-        .mount("/", routes![health, convert, compile])
+        .mount("/", routes![health, convert, compile, artifact])
         .attach(Cors)
         .launch()
         .await?;

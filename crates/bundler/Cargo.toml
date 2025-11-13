@@ -15,8 +15,9 @@ rocket = "0.5.1"
 zip = "6.0.0"
 tempfile = "3.23.0"
 chrono = "0.4.42"
+uuid = { version="1.18.1", features=["v4", "serde"] }
 
 system = { path = "../system" }
 asset = { path = "../asset" }
 binary = { path = "../binary" }
-uuid = "1.18.1"
+directories = "6.0.0"

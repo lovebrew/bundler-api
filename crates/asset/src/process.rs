@@ -1,8 +1,7 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
 pub trait Process {
-    fn process(&self, path: &Path) -> Result<Vec<u8>>;
-    fn extension(&self) -> &str;
+    fn process(&self, path: &Path, file_name: &Path) -> Result<PathBuf>;
 }

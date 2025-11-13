@@ -2,15 +2,14 @@ use std::path::Path;
 
 use rocket::{
     form::{Form, FromForm},
-    fs::{NamedFile, TempFile},
+    fs::TempFile,
     futures::future::join_all,
     http::Status,
     tokio,
 };
-use tempfile::tempdir;
+use uuid::Uuid;
 
-use crate::temp_file_ext::{NamedFileExt, TempFileExt};
-use crate::zipfile::ZipFile;
+use crate::{response::ArtifactResponse, routes::artifacts_dir, temp_file_ext::TempFileExt};
 use asset::{font::Font, image::Image, process::Process};
 
 #[derive(FromForm)]
@@ -20,7 +19,7 @@ pub struct AssetUpload<'f> {
 }
 
 #[post("/convert", format = "multipart/form-data", data = "<form>")]
-pub async fn convert(form: Form<AssetUpload<'_>>) -> Result<(Status, NamedFile), Status> {
+pub async fn convert(form: Form<AssetUpload<'_>>) -> Result<String, Status> {
     if form.files.is_empty() || form.paths.is_empty() {
         return Err(Status::BadRequest);
     }
@@ -29,27 +28,33 @@ pub async fn convert(form: Form<AssetUpload<'_>>) -> Result<(Status, NamedFile),
         return Err(Status::BadRequest);
     }
 
-    let temp_dir = tempdir().map_err(|_| Status::InternalServerError)?;
+    let base_dir = artifacts_dir().map_err(|_| Status::InternalServerError)?;
+
+    let token = Uuid::new_v4();
+    let directory = base_dir.join(token.to_string());
+    if let Err(e) = tokio::fs::create_dir_all(&directory).await {
+        error!("Could not generate directory: {e}");
+        return Err(Status::InternalServerError);
+    }
 
     let form_data = form.files.iter().zip(form.paths.iter());
     let tasks = form_data.map(|(file, path)| {
-        let temp_path = temp_dir.path().to_owned();
+        let directory = directory.clone();
         async move {
             if file.len() == 0 {
                 return None;
             }
 
-            if Path::new(path).has_root() {
+            let filepath = Path::new(path).join(file.name()?);
+            let bytes = file.read_bytes().await.ok()?;
+
+            tokio::fs::create_dir_all(directory.join(path)).await.ok()?;
+
+            let output_path = directory.join(path).join(file.name()?);
+            if let Err(e) = tokio::fs::write(&output_path, &bytes).await {
+                error!("Could not write file '{filepath:?}': {e}");
                 return None;
             }
-
-            let file_path = file.name()?;
-            let bytes = file.read_bytes().await.ok()?;
-            let output_path = std::path::absolute(temp_path.join(path).join(file_path)).ok()?;
-            if let Some(parent) = output_path.parent() {
-                tokio::fs::create_dir_all(parent).await.ok()?;
-            }
-            tokio::fs::write(&output_path, &bytes).await.ok()?;
 
             let asset: Box<dyn Process + Send> = if Image::is_valid(&bytes).is_ok() {
                 Box::new(Image {})
@@ -59,34 +64,18 @@ pub async fn convert(form: Form<AssetUpload<'_>>) -> Result<(Status, NamedFile),
                 return None;
             };
 
-            let bytes = asset.process(&output_path).ok()?;
-            let filepath = output_path.strip_prefix(temp_path).ok()?;
-            let extension = asset.extension();
-            Some((filepath.with_extension(extension), bytes))
+            asset.process(&directory, &filepath).ok()
         }
     });
 
     let results: Vec<_> = join_all(tasks).await.into_iter().flatten().collect();
-    if results.is_empty() {
-        return Err(Status::BadRequest);
+    let mut response = ArtifactResponse::new(token);
+    for filepath in results.clone() {
+        response.add_file(filepath);
     }
 
-    let mut zip = ZipFile::new();
-    for (output_path, bytes) in results {
-        let _ = zip.add_file(&output_path, &bytes);
+    match results.len() {
+        0 => return Err(Status::BadRequest),
+        _ => response.json().map_err(|_| Status::InternalServerError),
     }
-
-    let file_count = zip.file_count();
-    let zip_content = zip.finish().map_err(|_| Status::InternalServerError)?;
-
-    let mut status = Status::Ok;
-    if file_count < form.files.len() {
-        status = Status::PartialContent;
-    }
-
-    let result = NamedFile::from_bytes(&zip_content)
-        .await
-        .map_err(|_| Status::InternalServerError)?;
-
-    Ok((status, result))
 }

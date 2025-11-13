@@ -1,6 +1,6 @@
-use std::io::Cursor;
 use std::path::Path;
 use std::process::Command;
+use std::{io::Cursor, path::PathBuf};
 
 use anyhow::{Result, bail};
 use image::{DynamicImage, GenericImageView, ImageFormat, ImageReader};
@@ -31,25 +31,22 @@ impl Image {
 }
 
 impl Process for Image {
-    fn process(&self, path: &Path) -> Result<Vec<u8>> {
+    fn process(&self, path: &Path, file_name: &Path) -> Result<PathBuf> {
         let program = system::programs::get_binary("tex3ds");
+        let output_path = path.join(file_name).with_extension("t3x");
 
-        let output_name = path.with_extension("t3x");
         let output = Command::new(program)
             .args(["-f", "rgba"])
-            .arg(path)
+            .arg(path.join(file_name))
             .arg("-o")
-            .arg(&output_name)
+            .arg(&output_path)
             .output();
 
-        let bytes = match output {
-            Ok(_) => std::fs::read(&output_name)?,
-            Err(_) => bail!("Failed to convert {path:?}"),
-        };
-        Ok(bytes)
-    }
+        let output_path = output_path.strip_prefix(path)?;
 
-    fn extension(&self) -> &str {
-        "t3x"
+        match output {
+            Ok(_) => Ok(output_path.to_owned()),
+            Err(_) => bail!("Failed to convert {path:?}"),
+        }
     }
 }

@@ -12,8 +12,11 @@ use rocket::{
 };
 use system::{platform::Platform, resources::Resource};
 use tempfile::tempdir;
+use uuid::Uuid;
 
 use crate::{
+    response::ArtifactResponse,
+    routes::artifacts_dir,
     temp_file_ext::{NamedFileExt, TempFileExt},
     zipfile::ZipFile,
 };
@@ -29,14 +32,21 @@ pub struct CompileRequest<'f> {
 }
 
 #[post("/compile", data = "<form>")]
-pub async fn compile(form: Form<CompileRequest<'_>>) -> Result<(Status, NamedFile), Status> {
+pub async fn compile(form: Form<CompileRequest<'_>>) -> Result<String, Status> {
     let mut form = form.into_inner();
     form.target.dedup();
     if form.target.is_empty() {
         return Err(Status::BadRequest);
     }
 
-    let temp_dir = tempdir().map_err(|_| Status::InternalServerError)?;
+    let base_dir = artifacts_dir().map_err(|_| Status::InternalServerError)?;
+
+    let token = Uuid::new_v4();
+    let directory = base_dir.join(token.to_string());
+    if let Err(e) = tokio::fs::create_dir_all(&directory).await {
+        error!("Could not generate directory: {e}");
+        return Err(Status::InternalServerError);
+    }
 
     let metadata = Metadata {
         title: form.title,
@@ -51,12 +61,12 @@ pub async fn compile(form: Form<CompileRequest<'_>>) -> Result<(Status, NamedFil
     };
 
     let tasks = form.target.clone().into_iter().map(|target| {
-        let temp_path = temp_dir.path().to_owned();
         let metadata = metadata.clone();
         let icon_bytes = icon_bytes.clone();
+        let directory = directory.clone();
         async move {
             let platform = Platform::from_str(&target).ok()?;
-            let target_path = temp_path.join(target);
+            let target_path = directory.join(target);
             if !target_path.exists() {
                 tokio::fs::create_dir_all(&target_path).await.ok()?;
             }
@@ -84,21 +94,13 @@ pub async fn compile(form: Form<CompileRequest<'_>>) -> Result<(Status, NamedFil
         return Err(Status::BadRequest);
     }
 
-    let mut zip = ZipFile::new();
-    for (output_path, bytes) in results {
-        let _ = zip.add_file(&output_path, &bytes);
+    let mut response = ArtifactResponse::new(token);
+    for filepath in results.clone() {
+        response.add_file(filepath);
     }
 
-    let file_count = zip.file_count();
-    let zip_content = zip.finish().map_err(|_| Status::InternalServerError)?;
-    let mut status = Status::Ok;
-    if file_count < form.target.len() {
-        status = Status::PartialContent;
+    match results.len() {
+        0 => return Err(Status::BadRequest),
+        _ => response.json().map_err(|_| Status::InternalServerError),
     }
-
-    let result = NamedFile::from_bytes(&zip_content)
-        .await
-        .map_err(|_| Status::InternalServerError)?;
-
-    Ok((status, result))
 }

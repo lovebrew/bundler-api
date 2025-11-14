@@ -21,3 +21,4 @@ system = { path = "../system" }
 asset = { path = "../asset" }
 binary = { path = "../binary" }
 directories = "6.0.0"
+walkdir = "2.5.0"

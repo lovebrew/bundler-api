@@ -1,8 +1,10 @@
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::process::ExitStatus;
 
 use anyhow::Result;
+use anyhow::bail;
 use system::platform::Platform;
 use system::resources::Resource;
 
@@ -27,22 +29,20 @@ impl Ctr {
 }
 
 impl Compile for Ctr {
-    fn compile(&self, path: &Path, metadata: &Metadata, icon: &Path) -> Result<(PathBuf, Vec<u8>)> {
+    fn compile(&self, path: &Path, metadata: &Metadata, icon: &Path) -> Result<PathBuf> {
         let smdh_path = self.create_smdh(path, metadata, icon)?;
         let elf_path = system::resources::fetch(&Platform::Ctr, Resource::ElfBinary);
         let romfs_path = system::resources::fetch(&Platform::Ctr, Resource::RomFS);
         let program = system::programs::get_binary("3dsxtool");
         let output_path = path.join(format!("{}.3dsx", &metadata.title));
 
-        let bytes = Command::new(program)
+        Command::new(program)
             .arg(elf_path)
             .arg(&output_path)
             .arg(format!("--smdh={}", smdh_path.display()))
             .arg(format!("--romfs={}", romfs_path.display()))
-            .output()
-            .and_then(|_| std::fs::read(&output_path))?;
+            .output()?;
 
-        let output_path = output_path.strip_prefix(path)?;
-        Ok((output_path.to_owned(), bytes))
+        Ok(output_path)
     }
 }

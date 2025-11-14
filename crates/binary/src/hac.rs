@@ -28,23 +28,22 @@ impl Hac {
 }
 
 impl Compile for Hac {
-    fn compile(&self, path: &Path, metadata: &Metadata, icon: &Path) -> Result<(PathBuf, Vec<u8>)> {
+    fn compile(&self, path: &Path, metadata: &Metadata, icon: &Path) -> Result<PathBuf> {
         let nacp_path = self.create_nacp(path, metadata)?;
         let elf_path = system::resources::fetch(&Platform::Hac, Resource::ElfBinary);
         let romfs_path = system::resources::fetch(&Platform::Hac, Resource::RomFS);
         let program = system::programs::get_binary("elf2nro");
         let output_path = path.join(format!("{}.nro", &metadata.title));
 
-        let bytes = Command::new(program)
+        Command::new(program)
             .arg(elf_path)
             .arg(&output_path)
             .arg(format!("--icon={icon:?}"))
             .arg(format!("--nacp={nacp_path:?}"))
             .arg(format!("--romfs={romfs_path:?}"))
-            .output()
-            .and_then(|_| std::fs::read(&output_path))?;
+            .output()?;
 
         let output_path = output_path.strip_prefix(path)?;
-        Ok((output_path.to_owned(), bytes))
+        Ok(output_path.to_owned())
     }
 }

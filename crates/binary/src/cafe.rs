@@ -33,7 +33,7 @@ impl Compile for Cafe {
         let output_path = path.join(format!("{}.wuhb", &metadata.title));
 
         Command::new(program)
-            .arg(rpx_path)
+            .arg(&rpx_path)
             .arg(&output_path)
             .arg(format!("--content={}", content_path.display()))
             .arg(format!("--name={}", metadata.title))
@@ -42,7 +42,7 @@ impl Compile for Cafe {
             .arg(format!("--icon={icon:?}"))
             .output()?;
 
-        let output_path = output_path.strip_prefix(path)?;
-        Ok(output_path.to_owned())
+        std::fs::remove_file(rpx_path)?;
+        Ok(output_path)
     }
 }

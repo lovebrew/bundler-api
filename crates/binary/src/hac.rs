@@ -43,7 +43,7 @@ impl Compile for Hac {
             .arg(format!("--romfs={romfs_path:?}"))
             .output()?;
 
-        let output_path = output_path.strip_prefix(path)?;
-        Ok(output_path.to_owned())
+        std::fs::remove_file(nacp_path)?;
+        Ok(output_path)
     }
 }

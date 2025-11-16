@@ -1,11 +1,7 @@
-use std::{
-    fs::FileType,
-    path::{Component, PathBuf},
-};
+use std::path::{Component, PathBuf};
 
-use rocket::{fs::NamedFile, http::Status, tokio};
+use rocket::{fs::NamedFile, http::Status};
 use uuid::Uuid;
-use walkdir::WalkDir;
 
 use crate::routes::artifacts_dir;
 
@@ -25,7 +21,6 @@ pub async fn artifact(uuid: String, filepath: String) -> Result<NamedFile, Statu
     let file = NamedFile::open(path).await.map_err(|_| Status::NotFound)?;
 
     // TODO: check uuid directory is empty, recursively and delete it if it is
-    
-    
+
     Ok(file)
 }

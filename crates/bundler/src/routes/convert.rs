@@ -9,7 +9,7 @@ use rocket::{
 };
 use uuid::Uuid;
 
-use crate::{response::ArtifactResponse, routes::artifacts_dir, temp_file_ext::TempFileExt};
+use crate::{response::ArtifactResponse, routes::artifacts_dir, tempfile::TempFileExt};
 use asset::{font::Font, image::Image, process::Process};
 
 #[derive(FromForm)]
@@ -69,13 +69,14 @@ pub async fn convert(form: Form<AssetUpload<'_>>) -> Result<String, Status> {
     });
 
     let results: Vec<_> = join_all(tasks).await.into_iter().flatten().collect();
+
     let mut response = ArtifactResponse::new(token);
     for filepath in results.clone() {
         response.add_file(filepath);
     }
 
     match results.len() {
-        0 => return Err(Status::BadRequest),
+        0 => Err(Status::BadRequest),
         _ => response.json().map_err(|_| Status::InternalServerError),
     }
 }

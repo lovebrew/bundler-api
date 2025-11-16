@@ -5,21 +5,15 @@ use asset::icon::Icon;
 use binary::{cafe::Cafe, compile::Compile, ctr::Ctr, hac::Hac, metadata::Metadata};
 use rocket::{
     form::{Form, FromForm},
-    fs::{NamedFile, TempFile},
+    fs::TempFile,
     futures::future::join_all,
     http::Status,
     tokio,
 };
-use system::{platform::Platform, resources::Resource};
-use tempfile::tempdir;
+use system::{platform::Platform, resources};
 use uuid::Uuid;
 
-use crate::{
-    response::ArtifactResponse,
-    routes::artifacts_dir,
-    temp_file_ext::{NamedFileExt, TempFileExt},
-    zipfile::ZipFile,
-};
+use crate::{response::ArtifactResponse, routes::artifacts_dir, tempfile::TempFileExt};
 
 #[derive(FromForm, Debug)]
 pub struct CompileRequest<'f> {
@@ -56,9 +50,10 @@ pub async fn compile(form: Form<CompileRequest<'_>>) -> Result<String, Status> {
     };
 
     let icon_bytes = match form.icon {
-        Some(icon) if icon.len() > 0 => icon.read_bytes().await.ok(),
-        _ => None,
-    };
+        Some(icon) if icon.len() > 0 => icon.read_bytes().await,
+        _ => tokio::fs::read(resources::fetch_icon()).await,
+    }
+    .map_err(|_| Status::InternalServerError)?;
 
     let tasks = form.target.clone().into_iter().map(|target| {
         let metadata = metadata.clone();
@@ -71,21 +66,16 @@ pub async fn compile(form: Form<CompileRequest<'_>>) -> Result<String, Status> {
                 tokio::fs::create_dir_all(&target_path).await.ok()?;
             }
             let icon_path = target_path.join("icon.bin");
-            let icon_data = match icon_bytes {
-                Some(bytes) => bytes,
-                None => {
-                    let path = system::resources::fetch(&platform, Resource::DefaultIcon);
-                    let bytes = tokio::fs::read(path).await.ok()?;
-                    bytes
-                }
-            };
-            let _ = Icon::from_bytes(&platform, &icon_data)?.create(&icon_path);
+            let _ = Icon::from_bytes(&platform, &icon_bytes)?.create(&icon_path);
             let binary: Box<dyn Compile + Send> = match platform {
                 Platform::Ctr => Box::new(Ctr {}),
                 Platform::Hac => Box::new(Hac {}),
                 Platform::Cafe => Box::new(Cafe {}),
             };
-            binary.compile(&target_path, &metadata, &icon_path).ok()
+            let path = binary.compile(&target_path, &metadata, &icon_path).ok()?;
+            let path = path.strip_prefix(&directory).ok()?;
+            tokio::fs::remove_file(icon_path).await.ok()?;
+            Some(path.to_owned())
         }
     });
 
@@ -100,7 +90,7 @@ pub async fn compile(form: Form<CompileRequest<'_>>) -> Result<String, Status> {
     }
 
     match results.len() {
-        0 => return Err(Status::BadRequest),
+        0 => Err(Status::BadRequest),
         _ => response.json().map_err(|_| Status::InternalServerError),
     }
 }

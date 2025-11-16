@@ -5,17 +5,15 @@ mod cors;
 mod logger;
 mod response;
 mod routes;
-mod temp_file_ext;
-mod zipfile;
-
-use routes::{artifact::artifact, compile::compile, convert::convert, health::health};
+pub mod server;
+mod tempfile;
 
 use system::programs;
 
 use anyhow::Result;
 use log::error;
 
-use crate::cors::Cors;
+use server::rocket;
 
 const CONFIG: &str = include_str!("../log4rs.yml");
 
@@ -30,15 +28,7 @@ async fn main() -> Result<()> {
     }
 
     system::downloads::sync().await?;
-
-    let rocket = rocket::build();
-    info!("Running with profile: {}", rocket.figment().profile());
-
-    rocket
-        .mount("/", routes![health, convert, compile, artifact])
-        .attach(Cors)
-        .launch()
-        .await?;
+    rocket().launch().await?;
 
     Ok(())
 }

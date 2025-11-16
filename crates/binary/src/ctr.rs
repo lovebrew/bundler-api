@@ -1,10 +1,8 @@
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
-use std::process::ExitStatus;
 
 use anyhow::Result;
-use anyhow::bail;
 use system::platform::Platform;
 use system::resources::Resource;
 
@@ -43,6 +41,7 @@ impl Compile for Ctr {
             .arg(format!("--romfs={}", romfs_path.display()))
             .output()?;
 
+        std::fs::remove_file(smdh_path)?;
         Ok(output_path)
     }
 }

@@ -45,12 +45,13 @@ pub async fn convert(form: Form<AssetUpload<'_>>) -> Result<String, Status> {
                 return None;
             }
 
-            let filepath = Path::new(path).join(file.name()?);
+            let filepath = Path::new(file.name()?);
             let bytes = file.read_bytes().await.ok()?;
 
-            tokio::fs::create_dir_all(directory.join(path)).await.ok()?;
+            let file_dir = directory.join(path);
+            tokio::fs::create_dir_all(&file_dir).await.ok()?;
 
-            let output_path = directory.join(path).join(file.name()?);
+            let output_path = file_dir.join(file.name()?);
             if let Err(e) = tokio::fs::write(&output_path, &bytes).await {
                 error!("Could not write file '{filepath:?}': {e}");
                 return None;
@@ -64,7 +65,14 @@ pub async fn convert(form: Form<AssetUpload<'_>>) -> Result<String, Status> {
                 return None;
             };
 
-            asset.process(&directory, &filepath).ok()
+            let result = asset.process(&file_dir, &filepath);
+            if let Err(result) = result {
+                println!("{result:?}");
+            } else if let Ok(filepath) = result {
+                let path = filepath.strip_prefix(directory).ok()?;
+                return Some(path.to_owned());
+            }
+            None
         }
     });
 

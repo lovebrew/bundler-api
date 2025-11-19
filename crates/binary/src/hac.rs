@@ -13,7 +13,7 @@ pub struct Hac;
 impl Hac {
     fn create_nacp(&self, path: &Path, metadata: &Metadata) -> Result<PathBuf> {
         let nacp_path = path.join(format!("{}.nacp", &metadata.title));
-        let program = system::programs::get_binary("smdhtool");
+        let program = system::programs::get_binary("nacptool");
 
         Command::new(program)
             .arg("--create")
@@ -43,7 +43,7 @@ impl Compile for Hac {
             .arg(format!("--romfs={romfs_path:?}"))
             .output()?;
 
-        std::fs::remove_file(nacp_path)?;
+        std::fs::remove_file(&nacp_path)?;
         Ok(output_path)
     }
 }

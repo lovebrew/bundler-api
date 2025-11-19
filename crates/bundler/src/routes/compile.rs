@@ -72,10 +72,16 @@ pub async fn compile(form: Form<CompileRequest<'_>>) -> Result<String, Status> {
                 Platform::Hac => Box::new(Hac {}),
                 Platform::Cafe => Box::new(Cafe {}),
             };
-            let path = binary.compile(&target_path, &metadata, &icon_path).ok()?;
-            let path = path.strip_prefix(&directory).ok()?;
+            let result = binary.compile(&target_path, &metadata, &icon_path);
             tokio::fs::remove_file(icon_path).await.ok()?;
-            Some(path.to_owned())
+
+            if let Err(result) = result {
+                println!("{result:?}");
+            } else if let Ok(path) = result {
+                let path = path.strip_prefix(directory).ok()?;
+                return Some(path.to_owned());
+            }
+            None
         }
     });
 

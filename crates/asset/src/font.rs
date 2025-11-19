@@ -24,17 +24,13 @@ impl Process for Font {
         let program = system::programs::get_binary("mkbcfnt");
         let output_path = path.join(file_name).with_extension("bcfnt");
 
-        let output = Command::new(program)
+        Command::new(program)
             .arg(path.join(file_name))
             .arg("-o")
             .arg(&output_path)
-            .output();
+            .output()?;
 
-        let output_name = output_path.strip_prefix(path)?;
-
-        match output {
-            Ok(_) => Ok(output_name.to_owned()),
-            Err(_) => bail!("Failed to convert {path:?}"),
-        }
+        std::fs::remove_file(path.join(file_name))?;
+        Ok(output_path.to_owned())
     }
 }

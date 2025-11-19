@@ -72,15 +72,17 @@ pub async fn sync() -> Result<()> {
         let releases = repository.releases().get_latest().await?;
 
         for asset in releases.assets {
-            let response = client.get(asset.browser_download_url).send().await?;
-            let bytes = response.bytes().await?;
-            let file_path = directory.path().join(&asset.name);
-            tokio::fs::write(&file_path, bytes).await?;
-
             if !cache.is_up_to_date(&asset.name, asset.updated_at) {
+                let response = client.get(asset.browser_download_url).send().await?;
+                let bytes = response.bytes().await?;
+                let file_path = directory.path().join(&asset.name);
+                tokio::fs::write(&file_path, bytes).await?;
+
                 extract_files(&file_path, repo_config.filter).await?;
                 info!("Downloaded and extracted asset: {}", asset.name);
                 cache.update(&asset.name, asset.updated_at)?;
+            } else {
+                info!("Asset {} is up to date.", asset.name);
             }
         }
     }

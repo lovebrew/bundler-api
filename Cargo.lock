@@ -189,6 +189,8 @@ name = "binary"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "serde",
+ "serde_json",
  "system",
  "tokio",
 ]

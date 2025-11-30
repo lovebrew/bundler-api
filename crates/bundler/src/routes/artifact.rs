@@ -24,6 +24,7 @@ pub async fn artifact(uuid: String, filepath: String) -> Result<NamedFile, Statu
 
     let path = artifact_path.join(path);
     let file = NamedFile::open(&path).await.map_err(|_| Status::NotFound)?;
+
     if let Err(_) = tokio::fs::remove_file(&path).await {
         return Err(Status::InternalServerError);
     }

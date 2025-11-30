@@ -17,21 +17,17 @@ use crate::{response::ArtifactResponse, routes::artifacts_dir, tempfile::TempFil
 
 #[derive(FromForm, Debug)]
 pub struct CompileRequest<'f> {
-    pub title: String,
-    pub description: String,
-    pub author: String,
-    pub version: String,
-    pub target: Vec<String>,
+    pub config: String,
     pub icon: Option<TempFile<'f>>,
 }
 
 #[post("/compile", data = "<form>")]
 pub async fn compile(form: Form<CompileRequest<'_>>) -> Result<String, Status> {
-    let mut form = form.into_inner();
-    form.target.dedup();
-    if form.target.is_empty() {
-        return Err(Status::BadRequest);
-    }
+    let mut metadata = match serde_json::from_str::<Metadata>(&form.config) {
+        Ok(metadata) => metadata,
+        Err(_) => return Err(Status::BadRequest),
+    };
+    metadata.targets.dedup();
 
     let base_dir = artifacts_dir().map_err(|_| Status::InternalServerError)?;
 
@@ -42,20 +38,13 @@ pub async fn compile(form: Form<CompileRequest<'_>>) -> Result<String, Status> {
         return Err(Status::InternalServerError);
     }
 
-    let metadata = Metadata {
-        title: form.title,
-        author: form.author,
-        version: form.version,
-        description: form.description,
-    };
-
-    let icon_bytes = match form.icon {
+    let icon_bytes = match &form.icon {
         Some(icon) if icon.len() > 0 => icon.read_bytes().await,
         _ => tokio::fs::read(resources::fetch_icon()).await,
     }
     .map_err(|_| Status::InternalServerError)?;
 
-    let tasks = form.target.clone().into_iter().map(|target| {
+    let tasks = metadata.targets.clone().into_iter().map(|target| {
         let metadata = metadata.clone();
         let icon_bytes = icon_bytes.clone();
         let directory = directory.clone();

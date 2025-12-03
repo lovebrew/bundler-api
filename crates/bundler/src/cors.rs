@@ -17,10 +17,13 @@ static ALLOWED_ORIGINS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
 
     #[cfg(debug_assertions)]
     {
-        set.insert("http://localhost:5000");
+        set.insert("http://localhost:3000");
     }
     set
 });
+
+static CORS_PATHS: LazyLock<HashSet<&'static str>> =
+    LazyLock::new(|| HashSet::from(["/convert", "/compile", "/artifact"]));
 
 fn set_cors_headers(
     response: &mut Response<'_>,
@@ -65,7 +68,7 @@ impl Fairing for Cors {
             return;
         }
 
-        if matches!(path.as_str(), "/convert" | "/compile") {
+        if CORS_PATHS.contains(path.as_str()) {
             let origin = headers.get_one("Origin");
             if let Some(origin) = origin {
                 if ALLOWED_ORIGINS.contains(&origin) {

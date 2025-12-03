@@ -1,4 +1,7 @@
-use std::{path::Path, process::Command};
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use anyhow::{Result, bail};
 use ttf_parser::Face;
@@ -17,24 +20,17 @@ impl Font {
 }
 
 impl Process for Font {
-    fn process(&self, path: &Path) -> Result<Vec<u8>> {
+    fn process(&self, path: &Path, file_name: &Path) -> Result<PathBuf> {
         let program = system::programs::get_binary("mkbcfnt");
+        let output_path = path.join(file_name).with_extension("bcfnt");
 
-        let output_name = path.with_extension("bcfnt");
-        let output = Command::new(program)
-            .arg(path)
+        Command::new(program)
+            .arg(path.join(file_name))
             .arg("-o")
-            .arg(&output_name)
-            .output();
+            .arg(&output_path)
+            .output()?;
 
-        let bytes = match output {
-            Ok(_) => std::fs::read(&output_name)?,
-            Err(_) => bail!("Failed to convert {path:?}"),
-        };
-        Ok(bytes)
-    }
-
-    fn extension(&self) -> &str {
-        "bcfnt"
+        std::fs::remove_file(path.join(file_name))?;
+        Ok(output_path.to_owned())
     }
 }

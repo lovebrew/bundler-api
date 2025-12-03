@@ -13,20 +13,11 @@ pub enum Resource {
 }
 
 fn make_resources(platform: &Platform) -> ResourceMap {
-    let (mut icon_ext, mut folder) = ("png", "files.romfs");
-    match platform {
-        Platform::Hac => icon_ext = "jpg",
-        Platform::Cafe => folder = "content",
-        _ => {}
-    }
-
     let base_dir = PathBuf::from(RESOURCES_DIRECTORY).join(platform.to_string());
-    let icon_name = base_dir.join("icon").with_extension(icon_ext);
 
     ResourceMap::from([
         (Resource::ElfBinary, base_dir.join("lovepotion.elf")),
-        (Resource::DefaultIcon, icon_name),
-        (Resource::RomFS, base_dir.join(folder)),
+        (Resource::RomFS, base_dir.join("files.romfs")),
     ])
 }
 
@@ -37,6 +28,11 @@ static RESOURCES: LazyLock<PlatformMap> = LazyLock::new(|| {
     }
     result
 });
+
+pub fn fetch_icon() -> PathBuf {
+    let base_dir = PathBuf::from(RESOURCES_DIRECTORY);
+    base_dir.join("default.png")
+}
 
 pub fn fetch(platform: &Platform, resource: Resource) -> PathBuf {
     if let Some(path) = RESOURCES.get(platform).and_then(|map| map.get(&resource)) {

@@ -32,7 +32,7 @@ impl AssetCache {
         self.cache.insert(
             name.to_string(),
             AssetTimestamp {
-                downloaded_at: timestamp,
+                downloaded_at: Utc::now(),
                 updated_at: timestamp,
             },
         );
@@ -43,7 +43,7 @@ impl AssetCache {
 
     pub fn is_up_to_date(&self, name: &str, timestamp: DateTime<Utc>) -> bool {
         if let Some(cache) = self.cache.get(name) {
-            cache.downloaded_at > timestamp
+            cache.updated_at >= timestamp
         } else {
             false
         }

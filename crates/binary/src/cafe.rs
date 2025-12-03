@@ -26,24 +26,23 @@ impl Cafe {
 }
 
 impl Compile for Cafe {
-    fn compile(&self, path: &Path, metadata: &Metadata, icon: &Path) -> Result<(PathBuf, Vec<u8>)> {
+    fn compile(&self, path: &Path, metadata: &Metadata, icon: &Path) -> Result<PathBuf> {
         let rpx_path = self.create_rpx(path, &metadata.title)?;
         let content_path = system::resources::fetch(&Platform::Cafe, Resource::RomFS);
         let program = system::programs::get_binary("wuhbtool");
         let output_path = path.join(format!("{}.wuhb", &metadata.title));
 
-        let bytes = Command::new(program)
-            .arg(rpx_path)
+        Command::new(program)
+            .arg(&rpx_path)
             .arg(&output_path)
             .arg(format!("--content={}", content_path.display()))
             .arg(format!("--name={}", metadata.title))
             .arg(format!("--short-name={}", metadata.title))
             .arg(format!("--author={}", metadata.author))
             .arg(format!("--icon={icon:?}"))
-            .output()
-            .and_then(|_| std::fs::read(&output_path))?;
+            .output()?;
 
-        let output_path = output_path.strip_prefix(path)?;
-        Ok((output_path.to_owned(), bytes))
+        std::fs::remove_file(rpx_path)?;
+        Ok(output_path)
     }
 }
